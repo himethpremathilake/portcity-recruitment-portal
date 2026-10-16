@@ -8,10 +8,11 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/users/$(request.auth.token.email));
     }
 
-    // Check if requester is the super admin
+    // Check if requester is a super admin
     function isSuperAdmin() {
       return request.auth != null &&
-             request.auth.token.email == "portcitybpo26@gmail.com";
+             (request.auth.token.email == "portcitybpo26@gmail.com" ||
+              request.auth.token.email == "gayathri@portcitybpo.lk");
     }
 
     // Requisitions: any portal user can read/write
@@ -33,10 +34,12 @@ service cloud.firestore {
     // Users: any portal user can read; only super admin can write
     match /users/{email} {
       allow read: if isPortalUser() || isSuperAdmin();
-      // Super admin can manage users; also allow self-creation on first login
+      // Super admins can manage users; also allow self-creation on first login
       allow create: if isSuperAdmin() ||
                        (request.auth != null && request.auth.token.email == email);
-      allow update, delete: if isSuperAdmin() || isPortalUser();
+      // Only super admins can delete users
+      allow update: if isSuperAdmin() || isPortalUser();
+      allow delete: if isSuperAdmin();
     }
   }
 }

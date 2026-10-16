@@ -52,7 +52,7 @@
     </div>
     <nav class="nav flex flex-col gap-1" id="nav"></nav>
     <div class="mt-auto text-xs opacity-70 space-y-2 pt-4 border-t border-blue-700">
-      <button class="underline block hover:opacity-100" onclick="resetData()">Reset demo data</button>
+      <button id="resetBtn" class="underline block hover:opacity-100" onclick="resetData()" style="display:none">Reset demo data</button>
       <button class="underline block hover:opacity-100" onclick="signOut()">Sign out</button>
       <div class="opacity-50">Data stored in Firebase.</div>
     </div>
@@ -93,7 +93,8 @@ firebase.initializeApp({
 });
 const auth = firebase.auth();
 const db = firebase.firestore();
-const SUPER_ADMIN = 'portcitybpo26@gmail.com';
+const SUPER_ADMINS = ['portcitybpo26@gmail.com', 'gayathri@portcitybpo.lk'];
+const isSuperAdmin = email => SUPER_ADMINS.includes(email);
 
 // ===== APP STATE =====
 let me = null;
@@ -236,7 +237,7 @@ auth.onAuthStateChanged(async user => {
 
   const userDoc = await db.collection('users').doc(user.email).get();
 
-  if (!userDoc.exists && user.email !== SUPER_ADMIN) {
+  if (!userDoc.exists && !isSuperAdmin(user.email)) {
     const err = $('#loginError');
     err.style.display = 'block';
     err.textContent = `Access denied. ${user.email} is not authorized. Contact your HR administrator.`;
@@ -267,6 +268,7 @@ auth.onAuthStateChanged(async user => {
   }
   $('#userName').textContent = me.name;
   $('#userRoleLabel').textContent = me.role + (me.div !== 'All' ? ` · ${me.div}` : '');
+  if (isSuperAdmin(me.email)) $('#resetBtn').style.display = 'block';
 
   await loadSettings();
   page = NAV[me.role][0][0];
@@ -645,14 +647,14 @@ function viewUsers() {
     cachedUsers = snap.docs.map(d => ({ email: d.id, ...d.data() }));
     if (page === 'users') render();
   });
-  const isAdmin = me.email === SUPER_ADMIN || me.role === 'HR / Recruiter';
+  const canManage = isSuperAdmin(me.email);
   return `<div class="flex justify-between items-center mb-4">
     <p class="text-sm text-gray-500">Users with access to this portal. Sign in with Google is required.</p>
-    ${isAdmin ? `<button class="btn btn-p" onclick="addUser()">+ Add User</button>` : ''}
+    ${canManage ? `<button class="btn btn-p" onclick="addUser()">+ Give Access</button>` : ''}
   </div>
   <div class="bg-white border rounded-xl overflow-auto"><table class="w-full text-sm">
-  <thead class="bg-gray-50"><tr><th class="p-3 text-left">Name</th><th class="p-3 text-left">Email</th><th class="p-3 text-left">Role</th><th class="p-3 text-left">Division</th><th class="p-3 text-left">Status</th>${isAdmin?'<th class="p-3"></th>':''}</tr></thead>
-  <tbody>${cachedUsers.length ? cachedUsers.map(u=>`<tr class="border-t"><td class="p-3">${esc(u.name||'')}</td><td class="p-3 text-gray-600">${esc(u.email)}</td><td class="p-3">${esc(u.role)}</td><td class="p-3">${esc(u.div)}</td><td class="p-3"><span class="badge bg-emerald-100 text-emerald-800">Active</span></td>${isAdmin?`<td class="p-3">${u.email!==SUPER_ADMIN?`<button class="text-red-600 text-xs hover:underline" onclick="removeUser('${esc(u.email)}')">Remove</button>`:''}`:''}</tr>`).join('') : '<tr><td colspan="6" class="p-4 text-gray-400 text-center">Loading users…</td></tr>'}</tbody></table></div>`;
+  <thead class="bg-gray-50"><tr><th class="p-3 text-left">Name</th><th class="p-3 text-left">Email</th><th class="p-3 text-left">Role</th><th class="p-3 text-left">Division</th><th class="p-3 text-left">Status</th>${canManage?'<th class="p-3"></th>':''}</tr></thead>
+  <tbody>${cachedUsers.length ? cachedUsers.map(u=>`<tr class="border-t"><td class="p-3">${esc(u.name||'')}${isSuperAdmin(u.email)?'<span class="badge bg-blue-100 text-blue-700 ml-1">Super Admin</span>':''}</td><td class="p-3 text-gray-600">${esc(u.email)}</td><td class="p-3">${esc(u.role)}</td><td class="p-3">${esc(u.div)}</td><td class="p-3"><span class="badge bg-emerald-100 text-emerald-800">Active</span></td>${canManage?`<td class="p-3">${!isSuperAdmin(u.email)?`<button class="text-red-600 text-xs hover:underline" onclick="removeUser('${esc(u.email)}')">Revoke Access</button>`:''}`:''}</tr>`).join('') : '<tr><td colspan="6" class="p-4 text-gray-400 text-center">Loading users…</td></tr>'}</tbody></table></div>`;
 }
 
 function addUser() {
