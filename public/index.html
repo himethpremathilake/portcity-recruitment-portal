@@ -144,9 +144,9 @@
       <input id="auEmail" class="inp" type="email" placeholder="Email address *">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <select id="auRole" class="inp" onchange="updateDivSelect()">
-          <option value="Viewer">Viewer</option>
-          <option value="Editor">Editor</option>
-          <option value="Super Admin">Super Admin</option>
+          <option value="Division ER">Viewer — Division ER</option>
+          <option value="Division Head">Viewer — Division Head</option>
+          <option value="HR / Recruiter">Editor — HR/Recruiter</option>
         </select>
         <select id="auDiv" class="inp">
           <option value="All">All Divisions</option>
@@ -177,7 +177,7 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 const SUPER_ADMINS = ['portcitybpo26@gmail.com', 'gayathri@portcitybpo.lk'];
-const isSuperAdmin = email => SUPER_ADMINS.includes(email) || (cachedUsers.find(u => u.email === email)?.role === 'Super Admin');
+const isSuperAdmin = email => SUPER_ADMINS.includes(email);
 
 // ===== APP STATE =====
 let me = null;
@@ -192,7 +192,7 @@ let cachedUsers = [];
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const days = r => Math.max(0, Math.round(((r.filledDate ? new Date(r.filledDate) : new Date()) - new Date(r.created)) / 864e5));
-const isHR = () => ['HR / Recruiter', 'Editor', 'Super Admin'].includes(me?.role) || isSuperAdmin(me?.email);
+const isHR = () => me?.role === 'HR / Recruiter';
 const visible = () => DB.reqs.filter(r => isHR() || r.div === me?.div);
 const OPEN = ['Pending Sign-Off','Approved','With Recruitment','Posted','Shortlisting','More Info Requested'];
 const COLORS = {
@@ -407,9 +407,8 @@ function closeAccessDrawer() {
 function updateDivSelect() {
   const role = document.getElementById('auRole').value;
   const divSel = document.getElementById('auDiv');
-  const noDiv = role === 'Editor' || role === 'Super Admin';
-  divSel.disabled = noDiv;
-  if (noDiv) divSel.value = 'All';
+  divSel.disabled = role === 'HR / Recruiter';
+  if (role === 'HR / Recruiter') divSel.value = 'All';
 }
 async function renderAccessList() {
   const list = document.getElementById('accessList');
@@ -418,9 +417,10 @@ async function renderAccessList() {
     const snap = await db.collection('users').get();
     const users = snap.docs.map(d => ({email: d.id, ...d.data()}));
     const tiers = [
-      {label:'Super Admin', color:'#1d4ed8', bg:'#dbeafe', users: users.filter(u => isSuperAdmin(u.email) || u.role === 'Super Admin')},
-      {label:'Editor', color:'#059669', bg:'#d1fae5', users: users.filter(u => !isSuperAdmin(u.email) && u.role !== 'Super Admin' && ['Editor','HR / Recruiter'].includes(u.role))},
-      {label:'Viewer', color:'#7c3aed', bg:'#ede9fe', users: users.filter(u => !isSuperAdmin(u.email) && ['Viewer','Division ER','Division Head'].includes(u.role))},
+      {label:'Super Admins', color:'#1d4ed8', bg:'#dbeafe', users: users.filter(u => isSuperAdmin(u.email))},
+      {label:'Editors — HR / Recruiter', color:'#059669', bg:'#d1fae5', users: users.filter(u => !isSuperAdmin(u.email) && u.role === 'HR / Recruiter')},
+      {label:'Viewers — Division Head', color:'#d97706', bg:'#fef3c7', users: users.filter(u => u.role === 'Division Head')},
+      {label:'Viewers — Division ER', color:'#7c3aed', bg:'#ede9fe', users: users.filter(u => u.role === 'Division ER')},
     ];
     list.innerHTML = tiers.map(t => `
       <div style="margin-bottom:20px">
@@ -529,12 +529,9 @@ auth.onAuthStateChanged(async user => {
 
 // ===== NAV =====
 const NAV = {
-  'Viewer':       [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview']],
-  'Division ER':  [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview']],
-  'Division Head':[['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview'],['approvals','✍️ Approvals']],
-  'Editor':       [['overview','📈 Overview'],['vault','🗄️ Vault'],['tp','🤝 3rd-Party Headhunters'],['new','➕ New Request'],['settings','⚙️ Settings'],['users','👥 User Management']],
-  'HR / Recruiter':[['overview','📈 Overview'],['vault','🗄️ Vault'],['tp','🤝 3rd-Party Headhunters'],['new','➕ New Request'],['settings','⚙️ Settings'],['users','👥 User Management']],
-  'Super Admin':  [['overview','📈 Overview'],['vault','🗄️ Vault'],['tp','🤝 3rd-Party Headhunters'],['new','➕ New Request'],['settings','⚙️ Settings'],['users','👥 User Management']]
+  'Division ER': [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview']],
+  'Division Head': [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview'],['approvals','✍️ Approvals']],
+  'HR / Recruiter': [['overview','📈 Overview'],['vault','🗄️ Vault'],['tp','🤝 3rd-Party Headhunters'],['new','➕ New Request'],['settings','⚙️ Settings'],['users','👥 User Management']]
 };
 const TITLES = {new:'New Recruitment Request',mine:'My Requests',division:'Division Overview',approvals:'Approvals',overview:'Overview — All Divisions',vault:'Requisition Vault',tp:'3rd-Party Headhunters',settings:'Settings',users:'User Management'};
 
