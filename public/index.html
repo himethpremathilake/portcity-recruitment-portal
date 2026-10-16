@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Port City BPO — Recruitment Requisition Portal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'Plus Jakarta Sans',sans-serif;background:#f5f7fb}
+  .badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+  .inp{width:100%;border:1px solid #d6dce8;border-radius:8px;padding:8px 10px;font-size:14px;background:#fff}
+  .btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .btn-p{background:#1d4ed8;color:#fff}.btn-p:hover{background:#1e40af}
+  .btn-o{border:1px solid #d6dce8;background:#fff}.btn-o:hover{background:#f1f4f9}
+  .btn-d{background:#dc2626;color:#fff}
+  .nav a{display:flex;gap:10px;padding:9px 12px;border-radius:8px;font-size:14px;cursor:pointer;opacity:.85}
+  .nav a.active,.nav a:hover{background:rgba(255,255,255,.15);opacity:1}
+  th{cursor:pointer;user-select:none}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f5f7fb">
+  <div style="background:#fff;border-radius:16px;padding:40px;max-width:400px;width:90%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+    <div style="width:56px;height:56px;background:#1d4ed8;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:#fff;font-weight:700;font-size:20px">PC</div>
+    <h1 style="font-size:22px;font-weight:700;margin-bottom:4px;color:#111827">Port City BPO</h1>
+    <p style="color:#6b7280;font-size:14px;margin-bottom:32px">Recruitment Requisition Portal</p>
+    <button id="signInBtn" style="width:100%;padding:12px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
+      Sign in with Google
+    </button>
+    <div id="loginError" style="color:#dc2626;font-size:13px;margin-top:12px;display:none;padding:8px;background:#fef2f2;border-radius:6px;text-align:left"></div>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div id="appShell" style="display:none" class="flex min-h-screen">
+  <aside class="w-64 bg-blue-800 text-white flex flex-col p-4 shrink-0">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-lg bg-white text-blue-800 font-bold flex items-center justify-center">PC</div>
+      <div><div class="font-bold">Port City BPO</div><div class="text-xs opacity-70">Recruitment Portal</div></div>
+    </div>
+    <div class="flex items-center gap-3 mb-5 bg-blue-900 rounded-lg p-2">
+      <img id="userAvatar" src="" class="w-8 h-8 rounded-full hidden" style="object-fit:cover">
+      <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold" id="userInitial"></div>
+      <div class="min-w-0">
+        <div id="userName" class="text-sm font-semibold truncate"></div>
+        <div id="userRoleLabel" class="text-xs opacity-70 truncate"></div>
+      </div>
+    </div>
+    <nav class="nav flex flex-col gap-1" id="nav"></nav>
+    <div class="mt-auto text-xs opacity-70 space-y-2 pt-4 border-t border-blue-700">
+      <button class="underline block hover:opacity-100" onclick="resetData()">Reset demo data</button>
+      <button class="underline block hover:opacity-100" onclick="signOut()">Sign out</button>
+      <div class="opacity-50">Data stored in Firebase.</div>
+    </div>
+  </aside>
+  <main class="flex-1 flex flex-col min-w-0">
+    <header class="flex items-center justify-between px-6 py-3 bg-white border-b">
+      <div id="pageTitle" class="font-semibold"></div>
+      <div class="relative">
+        <button onclick="toggleNotif()" class="relative text-blue-700 text-2xl">🔔<span id="nCount" class="absolute -top-1 -right-2 bg-red-600 text-white text-[10px] rounded-full px-1.5"></span></button>
+        <div id="notifBox" class="hidden absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg z-20 max-h-96 overflow-auto"></div>
+      </div>
+    </header>
+    <section id="view" class="p-6 overflow-auto">
+      <div class="flex items-center justify-center h-48 text-gray-400">Loading…</div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="hidden fixed inset-0 bg-black/40 z-30 flex items-center justify-center p-4">
+  <div id="modalBody" class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto"></div>
+</div>
+<div id="toast" class="hidden fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm z-40"></div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+<script>
+// ===== FIREBASE INIT =====
+firebase.initializeApp({
+  apiKey: "AIzaSyDMgjGzb03sr3MGP01y4lxwKCbssOXG54E",
+  authDomain: "portcity-recruitment-portal.firebaseapp.com",
+  projectId: "portcity-recruitment-portal",
+  storageBucket: "portcity-recruitment-portal.firebasestorage.app",
+  messagingSenderId: "236809087430",
+  appId: "1:236809087430:web:f2af25e01fa272fead2ac7"
+});
+const auth = firebase.auth();
+const db = firebase.firestore();
+const SUPER_ADMIN = 'portcitybpo26@gmail.com';
+
+// ===== APP STATE =====
+let me = null;
+let page = 'overview';
+let sort = {k:'days', d:-1};
+let filter = 'All';
+let q = '';
+let DB = { reqs: [], notifs: [], divisions: [], departments: {}, nextId: 7 };
+let unsubscribers = [];
+let cachedUsers = [];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const days = r => Math.max(0, Math.round(((r.filledDate ? new Date(r.filledDate) : new Date()) - new Date(r.created)) / 864e5));
+const isHR = () => me?.role === 'HR / Recruiter';
+const visible = () => DB.reqs.filter(r => isHR() || r.div === me?.div);
+const OPEN = ['Pending Sign-Off','Approved','With Recruitment','Posted','Shortlisting','More Info Requested'];
+const COLORS = {
+  'Draft':'bg-gray-100 text-gray-700','Pending Sign-Off':'bg-amber-100 text-amber-800',
+  'Approved':'bg-emerald-100 text-emerald-800','Rejected':'bg-red-100 text-red-700',
+  'With Recruitment':'bg-blue-100 text-blue-800','Posted':'bg-indigo-100 text-indigo-800',
+  'Shortlisting':'bg-cyan-100 text-cyan-800','Filled':'bg-green-600 text-white',
+  'On Hold':'bg-orange-100 text-orange-800','Withdrawn':'bg-gray-300 text-gray-700',
+  'More Info Requested':'bg-purple-100 text-purple-800'
+};
+const badge = s => `<span class="badge ${COLORS[s]||'bg-gray-100'}">${esc(s)}</span>`;
+const flag = d => d>=90?'<span class="badge bg-red-600 text-white">90+</span>':d>=60?'<span class="badge bg-orange-500 text-white">60+</span>':d>=30?'<span class="badge bg-amber-300">30+</span>':'<span class="badge bg-gray-100">&lt;30</span>';
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),2500)}
+
+// ===== DEFAULT DATA =====
+const DEFAULT_SETTINGS = {
+  divisions:[{code:'OPS-01',name:'Operations',dept:'Service Delivery'},{code:'TECH-02',name:'Technology',dept:'Engineering'},{code:'FIN-01',name:'Finance',dept:'Finance'}],
+  departments:{'Service Delivery':['Operations Associate','Team Lead','Operations Manager'],'Engineering':['Backend Engineer','Senior Developer','QA Analyst','UI Designer'],'Finance':['Data Analyst','Accountant']},
+  nextId: 7
+};
+const DEFAULT_REQS = [
+  {id:1,title:'Senior Developer',dept:'Engineering',div:'TECH-02',hc:3,type:'Permanent',status:'With Recruitment',by:SUPER_ADMIN,created:'2026-09-17',jd:true,manatal:'',posted:false,salary:'2500',resp:'Build and maintain backend services',reason:'New Recruitment',budget:'Budgeted',log:[]},
+  {id:2,title:'Backend Engineer',dept:'Engineering',div:'TECH-02',hc:2,type:'Permanent',status:'Posted',by:SUPER_ADMIN,created:'2026-07-13',jd:true,manatal:'https://manatal.com/job/123',posted:true,salary:'2200',resp:'Build REST APIs',reason:'Replacement',budget:'Budgeted',log:[]},
+  {id:3,title:'QA Analyst',dept:'Engineering',div:'OPS-01',hc:1,type:'Contract',status:'Pending Sign-Off',by:SUPER_ADMIN,created:'2026-08-28',jd:false,salary:'1200',resp:'Manual and automated testing',reason:'New Recruitment',budget:'Unbudgeted',log:[]},
+  {id:4,title:'Team Lead — Operations',dept:'Service Delivery',div:'OPS-01',hc:1,type:'Permanent',status:'On Hold',hold:'Budget review pending',by:SUPER_ADMIN,created:'2026-07-05',jd:true,salary:'1800',resp:'Lead operations team',reason:'Replacement',budget:'Budgeted',log:[]},
+  {id:5,title:'UI Designer',dept:'Engineering',div:'OPS-01',hc:1,type:'Contract',status:'Shortlisting',by:SUPER_ADMIN,created:'2026-08-31',jd:true,posted:true,salary:'1500',resp:'Design product UI',reason:'New Recruitment',budget:'Budgeted',tp:true,tpAgency:'TalentHunt Ltd',tpFee:'15% of annual',tpStatus:'DH Approved',clientCharged:false,candCharged:false,log:[]},
+  {id:6,title:'Data Analyst',dept:'Finance',div:'FIN-01',hc:1,type:'Permanent',status:'Filled',by:SUPER_ADMIN,created:'2026-05-02',filledDate:'2026-06-20',candidate:'S. Gunawardena',jd:true,posted:true,salary:'1600',resp:'Build and maintain reports',reason:'New Recruitment',budget:'Budgeted',log:[]}
+];
+
+// ===== FIRESTORE HELPERS =====
+async function loadSettings() {
+  const doc = await db.collection('settings').doc('config').get();
+  if (doc.exists) {
+    const data = doc.data();
+    DB.divisions = data.divisions || [];
+    DB.departments = data.departments || {};
+    DB.nextId = data.nextId || 7;
+  } else {
+    await saveSettingsData(DEFAULT_SETTINGS);
+  }
+}
+
+async function saveSettingsData(cfg) {
+  DB.divisions = cfg.divisions;
+  DB.departments = cfg.departments;
+  DB.nextId = cfg.nextId;
+  await db.collection('settings').doc('config').set(cfg);
+}
+
+async function saveSettingsCurrent() {
+  await db.collection('settings').doc('config').set({
+    divisions: DB.divisions,
+    departments: DB.departments,
+    nextId: DB.nextId
+  });
+}
+
+async function saveReq(r) {
+  const clean = JSON.parse(JSON.stringify(r));
+  await db.collection('requisitions').doc(String(r.id)).set(clean);
+}
+
+async function updateReq(id, updates) {
+  const clean = JSON.parse(JSON.stringify(updates));
+  await db.collection('requisitions').doc(String(id)).update(clean);
+}
+
+// ===== REAL-TIME LISTENERS =====
+function startListeners() {
+  unsubscribers.forEach(u => u());
+  unsubscribers = [];
+
+  unsubscribers.push(
+    db.collection('requisitions').onSnapshot(snap => {
+      DB.reqs = snap.docs.map(d => {
+        const data = d.data();
+        return { ...data, id: isNaN(+d.id) ? data.id : +d.id };
+      });
+      if (me) render();
+    })
+  );
+
+  unsubscribers.push(
+    db.collection('notifications').onSnapshot(snap => {
+      DB.notifs = snap.docs.map(d => d.data());
+      const mine = DB.notifs.filter(n => n.to === me?.email && !n.read).length;
+      const el = $('#nCount');
+      if (el) el.textContent = mine || '';
+    })
+  );
+}
+
+// ===== AUTH =====
+document.getElementById('signInBtn').onclick = async () => {
+  const btn = document.getElementById('signInBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg> Sign in with Google`;
+    const err = $('#loginError');
+    err.style.display = 'block';
+    err.textContent = e.message;
+  }
+};
+
+function signOut() {
+  unsubscribers.forEach(u => u());
+  unsubscribers = [];
+  auth.signOut();
+}
+
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    $('#loginScreen').style.display = 'flex';
+    $('#appShell').style.display = 'none';
+    const btn = document.getElementById('signInBtn');
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg> Sign in with Google`;
+    me = null;
+    return;
+  }
+
+  const userDoc = await db.collection('users').doc(user.email).get();
+
+  if (!userDoc.exists && user.email !== SUPER_ADMIN) {
+    const err = $('#loginError');
+    err.style.display = 'block';
+    err.textContent = `Access denied. ${user.email} is not authorized. Contact your HR administrator.`;
+    await auth.signOut();
+    return;
+  }
+
+  let userData;
+  if (userDoc.exists) {
+    userData = userDoc.data();
+  } else {
+    userData = { name: user.displayName || user.email, role: 'HR / Recruiter', div: 'All', email: user.email };
+    await db.collection('users').doc(user.email).set(userData);
+  }
+
+  me = { email: user.email, name: userData.name || user.displayName || user.email, role: userData.role, div: userData.div };
+
+  $('#loginScreen').style.display = 'none';
+  $('#appShell').style.display = 'flex';
+
+  if (user.photoURL) {
+    const av = $('#userAvatar');
+    av.src = user.photoURL;
+    av.classList.remove('hidden');
+    $('#userInitial').style.display = 'none';
+  } else {
+    $('#userInitial').textContent = me.name.charAt(0).toUpperCase();
+  }
+  $('#userName').textContent = me.name;
+  $('#userRoleLabel').textContent = me.role + (me.div !== 'All' ? ` · ${me.div}` : '');
+
+  await loadSettings();
+  page = NAV[me.role][0][0];
+  startListeners();
+  render();
+});
+
+// ===== RESET DEMO DATA =====
+async function resetData() {
+  if (!confirm('Replace all data with demo data?')) return;
+  toast('Resetting…');
+  try {
+    const [reqsSnap, notifsSnap] = await Promise.all([
+      db.collection('requisitions').get(),
+      db.collection('notifications').get()
+    ]);
+    const b1 = db.batch();
+    reqsSnap.docs.forEach(d => b1.delete(d.ref));
+    notifsSnap.docs.forEach(d => b1.delete(d.ref));
+    await b1.commit();
+
+    const b2 = db.batch();
+    DEFAULT_REQS.forEach(r => b2.set(db.collection('requisitions').doc(String(r.id)), r));
+    await b2.commit();
+
+    await saveSettingsData(DEFAULT_SETTINGS);
+    toast('Demo data reset');
+  } catch(e) {
+    toast('Error: ' + e.message);
+  }
+}
+
+// ===== NAV =====
+const NAV = {
+  'Division ER': [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview']],
+  'Division Head': [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview'],['approvals','✍️ Approvals']],
+  'HR / Recruiter': [['overview','📈 Overview'],['vault','🗄️ Vault'],['tp','🤝 3rd-Party Headhunters'],['new','➕ New Request'],['settings','⚙️ Settings'],['users','👥 User Management']]
+};
+const TITLES = {new:'New Recruitment Request',mine:'My Requests',division:'Division Overview',approvals:'Approvals',overview:'Overview — All Divisions',vault:'Requisition Vault',tp:'3rd-Party Headhunters',settings:'Settings',users:'User Management'};
+
+function go(p) { page = p; filter = 'All'; q = ''; window._apInit = 0; render(); }
+
+function render() {
+  if (!me) return;
+  $('#nav').innerHTML = NAV[me.role].map(([k,l]) => `<a class="${k===page?'active':''}" onclick="go('${k}')">${l}</a>`).join('');
+  $('#pageTitle').textContent = TITLES[page];
+  const mine = DB.notifs.filter(n => n.to === me.email && !n.read).length;
+  $('#nCount').textContent = mine || '';
+  const views = {new:viewNew,mine:viewMine,division:viewDivision,approvals:viewApprovals,overview:viewOverview,vault:viewVault,tp:viewTP,settings:viewSettings,users:viewUsers};
+  $('#view').innerHTML = views[page] ? views[page]() : '<p class="text-gray-400">Page not found.</p>';
+  if (page === 'new') initForm();
+}
+
+function toggleNotif() {
+  const b = $('#notifBox');
+  const list = DB.notifs.filter(n => n.to === me.email);
+  b.innerHTML = `<div class="p-3 border-b flex justify-between text-sm font-semibold">Notifications<button class="text-blue-700 text-xs" onclick="markAllRead()">Mark all read</button></div>` +
+    (list.map(n => `<div class="p-3 border-b text-sm ${n.read?'opacity-60':'font-medium'}"><div>${esc(n.title)}</div><div class="text-gray-600 font-normal">${esc(n.msg)}</div><div class="text-xs text-gray-400">${n.at}</div></div>`).join('') || '<div class="p-4 text-sm text-gray-500">No notifications</div>');
+  b.classList.toggle('hidden');
+}
+
+async function markAllRead() {
+  const toUpdate = DB.notifs.filter(n => n.to === me.email && !n.read);
+  if (!toUpdate.length) return;
+  const batch = db.batch();
+  toUpdate.forEach(n => {
+    batch.update(db.collection('notifications').doc(String(n.id)), { read: true });
+    n.read = true;
+  });
+  await batch.commit();
+  toggleNotif();
+  $('#nCount').textContent = '';
+}
+
+// ===== NOTIFICATIONS =====
+async function notify(role, div, title, msg) {
+  const snap = await db.collection('users').get();
+  const targets = snap.docs
+    .map(d => ({ email: d.id, ...d.data() }))
+    .filter(u => u.role === role && (div == null || u.div === div || u.div === 'All'));
+  if (!targets.length) return;
+  const batch = db.batch();
+  targets.forEach(u => {
+    const id = Date.now() + Math.random();
+    const n = { id, to: u.email, title, msg, read: false, at: new Date().toISOString().slice(0, 10) };
+    batch.set(db.collection('notifications').doc(String(id)), n);
+  });
+  await batch.commit();
+}
+
+function modal(html) { $('#modalBody').innerHTML = html; $('#modal').classList.remove('hidden'); }
+function closeModal() { $('#modal').classList.add('hidden'); }
+$('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
+
+/* ---------- New Request ---------- */
+function viewNew() {
+  const divs = isHR() ? DB.divisions : DB.divisions.filter(d => d.code === me.div);
+  const F = (l,h) => `<div><label class="text-sm font-medium">${l}</label><div class="mt-1">${h}</div></div>`;
+  return `<form id="reqForm" class="max-w-3xl bg-white rounded-xl border p-6 space-y-5">
+  <p class="text-xs font-bold text-blue-700 uppercase">A. Request Details</p>
+  <div class="grid md:grid-cols-2 gap-4">
+   ${F('Department *',`<select name="dept" class="inp" required><option value="">Select…</option>${Object.keys(DB.departments).map(d=>`<option>${esc(d)}</option>`).join('')}</select>`)}
+   ${F('Designation *','<select name="title" class="inp" required><option value="">Select department first</option></select>')}
+   ${F('Division / LOB Code',`<select name="div" class="inp">${divs.map(d=>`<option value="${d.code}">${d.code} — ${esc(d.name)}</option>`).join('')}</select>`)}
+   ${F('No. of Positions *','<input name="hc" type="number" min="1" value="1" class="inp" required>')}
+   ${F('Employment Type *','<select name="type" class="inp"><option>Permanent</option><option>Contract</option><option>Internship</option></select>')}
+   ${F('Reporting Head *','<input name="head" class="inp" required>')}
+   ${F('Target Fill Date','<input name="target" type="date" class="inp">')}
+  </div>
+  <p class="text-xs font-bold text-blue-700 uppercase">B. Role Details</p>
+  ${F('Job Responsibilities *','<textarea name="resp" rows="3" class="inp" required></textarea>')}
+  <div class="grid md:grid-cols-2 gap-4">${F('Salary (USD) *','<input name="salary" class="inp" required>')}${F('Working Shifts','<input name="shifts" class="inp" placeholder="e.g. Night shift, 5 days">')}</div>
+  <p class="text-xs font-bold text-blue-700 uppercase">C. Recruitment Classification</p>
+  <div class="flex gap-6 text-sm"><label><input type="radio" name="reason" value="New Recruitment" checked> New Recruitment</label><label><input type="radio" name="reason" value="Replacement"> Replacement</label></div>
+  <div id="replBox" class="hidden grid md:grid-cols-2 gap-4">${F('Resigned Employee Name','<input name="resName" class="inp">')}${F('Last Working Date','<input name="lwd" type="date" class="inp">')}</div>
+  <div class="flex gap-6 text-sm"><label><input type="radio" name="budget" value="Budgeted" checked> Budgeted</label><label><input type="radio" name="budget" value="Unbudgeted"> Unbudgeted</label></div>
+  <p class="text-xs font-bold text-blue-700 uppercase">D. Equipment & Facilities</p>
+  <textarea name="equip" rows="2" class="inp" placeholder="Laptop, headset, desk…"></textarea>
+  <p class="text-xs font-bold text-blue-700 uppercase">E. Supporting Documents</p>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="jd"> Job description attached</label>
+  <div class="flex gap-3 pt-2"><button class="btn btn-p" data-s="Pending Sign-Off">Submit for Sign-Off</button><button class="btn btn-o" data-s="Draft">Save Draft</button></div>
+  </form>`;
+}
+
+function initForm() {
+  const f = $('#reqForm');
+  f.dept.onchange = () => { f.title.innerHTML = (DB.departments[f.dept.value]||[]).map(d=>`<option>${esc(d)}</option>`).join('') || '<option value="">—</option>'; };
+  f.querySelectorAll('[name=reason]').forEach(r => r.onchange = () => $('#replBox').classList.toggle('hidden', f.reason.value !== 'Replacement'));
+  f.querySelectorAll('button[data-s]').forEach(b => b.onclick = async e => {
+    e.preventDefault();
+    const st = b.dataset.s;
+    if (st !== 'Draft' && !f.reportValidity()) return;
+    b.disabled = true; b.textContent = 'Saving…';
+    try {
+      const fd = Object.fromEntries(new FormData(f));
+      const id = DB.nextId++;
+      const r = {
+        id, title: fd.title||'Untitled', dept: fd.dept, div: fd.div, hc: +fd.hc||1,
+        type: fd.type, head: fd.head, target: fd.target, resp: fd.resp, salary: fd.salary,
+        shifts: fd.shifts, reason: fd.reason, budget: fd.budget, resName: fd.resName,
+        lwd: fd.lwd, equip: fd.equip, jd: !!fd.jd, status: st, by: me.email,
+        created: new Date().toISOString().slice(0,10),
+        log: [{a: st, by: me.name, at: new Date().toLocaleString()}]
+      };
+      if (me.role === 'Division Head' && st !== 'Draft') {
+        r.status = 'With Recruitment';
+        r.signature = 'typed:' + me.name;
+        await notify('HR / Recruiter', null, 'New approved requisition', `${r.title} (${r.div}) ready for recruitment`);
+      } else if (st !== 'Draft') {
+        await notify('Division Head', r.div, 'Approval needed', `${r.title} submitted by ${me.name}`);
+        await notify('HR / Recruiter', null, 'New requisition', `${r.title} submitted by ${me.name}`);
+      }
+      await saveReq(r);
+      await saveSettingsCurrent();
+      toast('Request saved');
+      go(isHR() ? 'vault' : 'mine');
+    } catch(err) {
+      toast('Error: ' + err.message);
+      b.disabled = false; b.textContent = st === 'Draft' ? 'Save Draft' : 'Submit for Sign-Off';
+    }
+  });
+}
+
+/* ---------- Actions ---------- */
+function act(id, action) {
+  const r = DB.reqs.find(x => x.id === id);
+  const extra = {
+    approve: '<label class="text-sm font-medium">Type your full name to sign *</label><input id="mSig" class="inp mb-3">',
+    fill: '<label class="text-sm">Candidate name *</label><input id="mCand" class="inp mb-2"><label class="text-sm">Fill date</label><input id="mDate" type="date" class="inp mb-3">',
+    suggest3p: '<label class="text-sm">Agency name *</label><input id="mAg" class="inp mb-2"><label class="text-sm">Package / Fee *</label><input id="mFee" class="inp mb-2"><label class="text-sm">Other relevant details</label><textarea id="mDet" class="inp mb-3"></textarea>',
+    approve3p: '<label class="text-sm font-medium">Type your full name to sign *</label><input id="mSig" class="inp mb-3">',
+    manatal: `<label class="text-sm">Manatal link</label><input id="mLink" class="inp mb-3" value="${esc(r.manatal||'')}">`
+  }[action] || '';
+  const label = {hold:'Put on Hold',withdraw:'Withdraw Request',reject:'Reject Request',sendback:'Send Back for Clarification',resume:'Resume Request',approve:'Approve & Sign',fill:'Mark as Filled',suggest3p:'Suggest 3rd-Party Headhunter',approve3p:'Approve 3rd-Party Headhunter',manatal:'Manatal Link'}[action];
+  const commentReq = ['hold','reject','sendback','withdraw'].includes(action);
+  modal(`<h3 class="text-lg font-bold mb-1">${label}</h3><p class="text-sm text-gray-500 mb-4">${esc(r.title)} · ${r.div}</p>${extra}${action==='manatal'?'':`<label class="text-sm">Comment ${commentReq?'*':'(optional)'}</label><textarea id="mCom" class="inp mb-4"></textarea>`}<div class="flex justify-end gap-2"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn ${['withdraw','reject'].includes(action)?'btn-d':'btn-p'}" onclick="doAct(${id},'${action}',${commentReq})">Confirm</button></div>`);
+}
+
+async function doAct(id, action, commentReq) {
+  const r = DB.reqs.find(x => x.id === id);
+  const v = s => ($(s)?.value||'').trim();
+  const c = v('#mCom');
+  if (commentReq && !c) return toast('Comment is required');
+  const T = {hold:'On Hold',withdraw:'Withdrawn',reject:'Rejected',sendback:'More Info Requested',resume:'Pending Sign-Off',approve:'With Recruitment',fill:'Filled',post:'Posted',shortlist:'Shortlisting'};
+  const updates = {};
+  if (action === 'approve' || action === 'approve3p') {
+    if (!v('#mSig')) return toast('Signature required');
+    updates.signature = 'typed:' + v('#mSig'); r.signature = updates.signature;
+  }
+  if (action === 'fill') {
+    if (!v('#mCand')) return toast('Candidate name required');
+    updates.candidate = v('#mCand'); updates.filledDate = v('#mDate') || new Date().toISOString().slice(0,10);
+    r.candidate = updates.candidate; r.filledDate = updates.filledDate;
+  }
+  if (action === 'suggest3p') {
+    if (!v('#mAg')||!v('#mFee')) return toast('Agency and fee required');
+    Object.assign(updates, {tp:true, tpAgency:v('#mAg'), tpFee:v('#mFee'), tpTerms:v('#mDet'), tpStatus:'Pending DH Approval'});
+    Object.assign(r, updates);
+    await notify('Division Head', r.div, '3P approval needed', `HR suggests ${r.tpAgency} for ${r.title}`);
+  }
+  if (action === 'approve3p') {
+    updates.tpStatus = 'DH Approved'; r.tpStatus = 'DH Approved';
+    await notify('HR / Recruiter', null, '3P approved', `${r.title}: headhunter approved by ${me.name}`);
+  }
+  if (action === 'manatal') { updates.manatal = v('#mLink'); r.manatal = updates.manatal; }
+  if (action === 'hold') { updates.hold = c; r.hold = c; }
+  if (action === 'post') { updates.posted = true; r.posted = true; }
+  if (T[action]) {
+    updates.status = T[action]; r.status = T[action];
+    await notify('HR / Recruiter', null, `Requisition ${T[action]}`, `${r.title} (${r.div}) → ${T[action]} by ${me.name}`);
+    if (action === 'resume' || action === 'sendback') await notify('Division Head', r.div, 'Requisition update', `${r.title} → ${T[action]}`);
+  }
+  const newLog = [...(r.log||[]), {a:label2(action), by:me.name, at:new Date().toLocaleString(), c}];
+  updates.log = newLog; r.log = newLog;
+  await updateReq(id, updates);
+  closeModal(); render(); toast('Done');
+}
+
+const label2 = a => ({suggest3p:'3P Suggested', approve3p:'3P Approved'}[a] || a);
+async function quick(id, a) { await doAct(id, a, false); }
+
+function detail(id) {
+  const r = DB.reqs.find(x => x.id === id);
+  const row = (k,v) => v ? `<div class="flex justify-between py-1 border-b text-sm"><span class="text-gray-500">${k}</span><span class="text-right max-w-[60%]">${esc(v)}</span></div>` : '';
+  modal(`<div class="flex justify-between items-start mb-3"><div><h3 class="text-lg font-bold">${esc(r.title)}</h3><p class="text-sm text-gray-500">${r.div} · by ${esc(r.by)}</p></div>${badge(r.status)}</div>
+  ${row('Department',r.dept)}${row('Headcount',r.hc)}${row('Type',r.type)}${row('Reporting Head',r.head)}${row('Target date',r.target)}${row('Salary',r.salary)}${row('Shifts',r.shifts)}${row('Reason',r.reason)}${row('Budget',r.budget)}${row('Resigned employee',r.resName)}${row('Equipment',r.equip)}${row('Responsibilities',r.resp)}${row('Hold reason',r.status==='On Hold'?r.hold:'')}${row('Signature',r.signature?.replace('typed:',''))}${row('Candidate',r.candidate)}${row('Filled date',r.filledDate)}${row('3P Agency',r.tpAgency)}${row('3P Fee',r.tpFee)}${row('3P Status',r.tpStatus)}
+  <p class="font-semibold text-sm mt-4 mb-1">Audit trail</p>${(r.log||[]).map(l=>`<div class="text-xs text-gray-600 py-0.5">• ${esc(l.a)} — ${esc(l.by)} (${esc(l.at)})${l.c?': '+esc(l.c):''}</div>`).join('')||'<div class="text-xs text-gray-400">No entries</div>'}
+  <div class="text-right mt-4"><button class="btn btn-o" onclick="closeModal()">Close</button></div>`);
+}
+
+/* ---------- My Requests ---------- */
+const STEPS = ['Submitted','Signed Off','With Recruitment','Shortlisting','Filled'];
+const stepIdx = s => ({'Pending Sign-Off':0,'More Info Requested':0,'Approved':1,'With Recruitment':2,'Posted':2,'Shortlisting':3,'Filled':4}[s] ?? -1);
+
+function viewMine() {
+  const FS = {All:()=>true, Pending:r=>['Pending Sign-Off','More Info Requested','Draft'].includes(r.status), Approved:r=>['With Recruitment','Posted','Shortlisting','Filled','Approved'].includes(r.status), 'On Hold':r=>r.status==='On Hold', Withdrawn:r=>r.status==='Withdrawn'};
+  const all = visible().filter(r => r.by === me.email || me.role === 'Division Head');
+  const list = all.filter(FS[filter]);
+  const k = (n,l) => `<div class="bg-white border rounded-xl p-4"><p class="text-2xl font-bold">${n}</p><p class="text-xs text-gray-500">${l}</p></div>`;
+  return `<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">${k(all.length,'Total Submitted')}${k(all.filter(FS.Pending).length,'Awaiting Action')}${k(all.filter(r=>['With Recruitment','Posted','Shortlisting'].includes(r.status)).length,'In Recruitment')}${k(all.filter(r=>r.status==='Filled').length,'Filled')}</div>
+  <div class="flex gap-2 mb-4 flex-wrap">${Object.keys(FS).map(f=>`<button class="badge text-sm px-3 py-1 ${f===filter?'bg-blue-700 text-white':'bg-white border'}" onclick="filter='${f}';render()">${f}</button>`).join('')}<button class="btn btn-o ml-auto" onclick="exportCSV(${JSON.stringify(list.map(r=>r.id))})">⬇ Export CSV</button></div>
+  <div class="space-y-3">${list.map(r => {
+    const i = stepIdx(r.status);
+    return `<div class="bg-white border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 ${r.status==='On Hold'?'bg-orange-50':''}">
+    <div><div class="flex gap-2 items-center"><a class="font-semibold cursor-pointer hover:underline" onclick="detail(${r.id})">${esc(r.title)}</a>${badge(r.status)}</div>
+    <p class="text-xs text-gray-500">${r.hc} position(s) · ${r.type} · Submitted ${r.created}</p>
+    ${r.status==='On Hold'?`<p class="text-xs italic text-orange-700 mt-1">Held — "${esc(r.hold)}"</p>`:''}
+    <div class="flex flex-wrap gap-1 mt-2 text-[11px]">${STEPS.map((s,j)=>`<span class="px-2 py-0.5 rounded ${j<=i?'bg-blue-700 text-white':'bg-gray-100 text-gray-500'}">${s}</span>`).join('<span class="text-gray-400">→</span>')}</div></div>
+    <div class="flex gap-2">${actionsFor(r)}</div></div>`;
+  }).join('')||'<p class="text-gray-500 text-sm">No requests.</p>'}</div>`;
+}
+
+function actionsFor(r) {
+  const b = (a,l,c='btn-o') => `<button class="btn ${c}" onclick="act(${r.id},'${a}')">${l}</button>`;
+  if (r.status === 'On Hold') return b('resume','Resume');
+  if (['Filled','Withdrawn','Rejected'].includes(r.status)) return '';
+  return b('hold','Hold') + b('withdraw','Withdraw');
+}
+
+/* ---------- Charts (SVG) ---------- */
+function bars(data) {
+  const max = Math.max(1, ...data.flatMap(d=>[d.a,d.b]));
+  return `<svg viewBox="0 0 ${data.length*70+20} 170" class="w-full h-44">${data.map((d,i)=>{const x=20+i*70,h1=d.a/max*130,h2=d.b/max*130;return `<rect x="${x}" y="${140-h1}" width="22" height="${h1}" fill="#1d4ed8" rx="3"/><rect x="${x+25}" y="${140-h2}" width="22" height="${h2}" fill="#10b981" rx="3"/><text x="${x+24}" y="158" font-size="10" text-anchor="middle" fill="#555">${esc(d.l)}</text>`}).join('')}</svg><div class="flex gap-4 text-xs"><span>🟦 Open</span><span>🟩 Filled</span></div>`;
+}
+function donut(counts) {
+  const tot = Object.values(counts).reduce((a,b)=>a+b,0)||1;
+  const pal = ['#1d4ed8','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#64748b','#ec4899'];
+  let off=0,i=0;
+  const segs = Object.entries(counts).map(([k,v])=>{const p=v/tot*100;const s=`<circle r="15.9" cx="20" cy="20" fill="none" stroke="${pal[i%8]}" stroke-width="6" stroke-dasharray="${p} ${100-p}" stroke-dashoffset="${-off}"/>`;off+=p;i++;return s}).join('');
+  i=0;
+  return `<div class="flex items-center gap-6"><svg viewBox="0 0 40 40" class="w-40 h-40 -rotate-90">${segs}</svg><div class="text-xs space-y-1">${Object.entries(counts).map(([k,v])=>`<div><span style="background:${pal[(i++)%8]}" class="inline-block w-3 h-3 rounded-sm mr-1"></span>${esc(k)}: ${v}</div>`).join('')}</div></div>`;
+}
+function agingTable(list, showDiv, withActions) {
+  list = [...list].sort((a,b) => days(b)-days(a));
+  return `<div class="bg-white border rounded-xl overflow-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-3 text-left">Position</th>${showDiv?'<th class="p-3 text-left">Division</th>':''}<th class="p-3 text-left">HC</th><th class="p-3 text-left">Status</th><th class="p-3 text-left">Days Open</th><th class="p-3 text-left">Flag</th>${withActions?'<th class="p-3 text-left">Actions</th>':''}</tr></thead><tbody>${list.map(r=>`<tr class="border-t"><td class="p-3"><a class="cursor-pointer hover:underline" onclick="detail(${r.id})">${esc(r.title)}</a></td>${showDiv?`<td class="p-3">${r.div}</td>`:''}<td class="p-3">${r.hc}</td><td class="p-3">${badge(r.status)}</td><td class="p-3">${days(r)}d</td><td class="p-3">${flag(days(r))}</td>${withActions?`<td class="p-3 flex gap-1">${actionsFor(r)}</td>`:''}</tr>`).join('')||'<tr><td class="p-4 text-gray-500" colspan="7">No open requisitions</td></tr>'}</tbody></table></div>`;
+}
+const kpi = (n,l) => `<div class="bg-white border rounded-xl p-4 text-center"><p class="text-2xl font-bold text-blue-800">${n}</p><p class="text-xs text-gray-500">${l}</p></div>`;
+function statusCounts(list) { const c={}; list.forEach(r=>c[r.status]=(c[r.status]||0)+1); return c; }
+
+function viewDivision() {
+  const list = visible();
+  const open = list.filter(r => OPEN.includes(r.status));
+  const yr = new Date().getFullYear() + '';
+  const months = [...Array(6)].map((_,i) => { const d=new Date(); d.setMonth(d.getMonth()-5+i); const m=d.toISOString().slice(0,7); return {l:d.toLocaleString('en',{month:'short'}), a:list.filter(r=>r.created.startsWith(m)).length, b:list.filter(r=>r.filledDate?.startsWith(m)).length}; });
+  return `<div class="flex justify-between mb-4"><h2 class="text-lg font-bold">Division ${me.div}</h2><button class="btn btn-o" onclick="exportCSV(${JSON.stringify(list.map(r=>r.id))})">⬇ Download Report</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4">${kpi(open.length,'Current Openings')}${kpi(list.filter(r=>r.status==='Filled'&&r.filledDate?.startsWith(yr)).length,'Filled This Year')}${kpi(list.filter(r=>r.status==='On Hold').length,'On Hold')}${kpi(list.filter(r=>r.status==='Withdrawn').length,'Withdrawn')}${kpi((open.length?Math.round(open.reduce((a,r)=>a+days(r),0)/open.length):0)+'d','Avg. Age (Open)')}</div>
+  <div class="grid md:grid-cols-2 gap-4 my-5"><div class="bg-white border rounded-xl p-4"><p class="font-medium text-sm mb-2">Status Breakdown</p>${donut(statusCounts(list))}</div><div class="bg-white border rounded-xl p-4"><p class="font-medium text-sm mb-2">Monthly: Submissions vs Fills</p>${bars(months)}</div></div>
+  <p class="font-medium text-sm mb-2">Current Openings — Aging Tracker</p>${agingTable(open, false, true)}`;
+}
+
+function viewOverview() {
+  const list = DB.reqs;
+  const open = list.filter(r => OPEN.includes(r.status));
+  const filled = list.filter(r => r.status === 'Filled');
+  const pend=list.filter(r=>r.status==='Pending Sign-Off').length, info=list.filter(r=>r.status==='More Info Requested').length;
+  const tp=list.filter(r=>r.tp&&r.tpStatus==='Pending DH Approval').length, wr=list.filter(r=>r.status==='With Recruitment').length;
+  return `<div class="flex justify-between mb-4"><h2 class="text-lg font-bold">All Divisions</h2><button class="btn btn-o" onclick="exportCSV(${JSON.stringify(list.map(r=>r.id))})">⬇ Download Report</button></div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">${kpi(open.reduce((a,r)=>a+r.hc,0),'Open Positions')}${kpi(filled.length,'Filled This Year')}${kpi((filled.length?Math.round(filled.reduce((a,r)=>a+days(r),0)/filled.length):0)+'d','Avg. Time-to-Fill')}${kpi(list.reduce((a,r)=>a+r.hc,0),'HC Requested')}</div>
+  <div class="bg-white border rounded-xl p-4 my-5"><p class="font-semibold text-sm mb-3">Pending Actions</p><div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm"><div class="p-3 rounded-lg bg-blue-50">🆕 <b>${wr}</b> ready to post</div><div class="p-3 rounded-lg bg-amber-50">⏳ <b>${pend}</b> awaiting DH sign-off</div><div class="p-3 rounded-lg bg-purple-50">❓ <b>${info}</b> sent back</div><div class="p-3 rounded-lg bg-cyan-50">🤝 <b>${tp}</b> 3P awaiting DH</div></div></div>
+  <div class="grid md:grid-cols-2 gap-4 mb-5"><div class="bg-white border rounded-xl p-4"><p class="font-medium text-sm mb-2">Open vs Filled — By Division</p>${bars(DB.divisions.map(d=>({l:d.code,a:open.filter(r=>r.div===d.code).length,b:filled.filter(r=>r.div===d.code).length})))}</div><div class="bg-white border rounded-xl p-4"><p class="font-medium text-sm mb-2">Status Distribution</p>${donut(statusCounts(list))}</div></div>
+  <p class="font-medium text-sm mb-2">Aging Tracker — All Open Requisitions</p>${agingTable(open, true, false)}`;
+}
+
+/* ---------- Approvals ---------- */
+function viewApprovals() {
+  const list = visible().filter(r => filter==='All' || r.status==='Pending Sign-Off' || r.tpStatus==='Pending DH Approval');
+  const pending = visible().filter(r => r.status==='Pending Sign-Off' || r.tpStatus==='Pending DH Approval').length;
+  if (filter === 'All' && !window._apInit) { filter = 'Pending'; window._apInit = 1; return viewApprovals(); }
+  return `<div class="flex gap-2 mb-4"><button class="badge text-sm px-3 py-1 ${filter==='Pending'?'bg-blue-700 text-white':'bg-white border'}" onclick="filter='Pending';render()">Pending (${pending})</button><button class="badge text-sm px-3 py-1 ${filter==='All'?'bg-blue-700 text-white':'bg-white border'}" onclick="filter='All';render()">All</button></div>
+  <div class="space-y-3">${list.map(r => {
+    const b = (a,l,c='btn-o') => `<button class="btn ${c}" onclick="act(${r.id},'${a}')">${l}</button>`;
+    let acts = '';
+    if (r.status === 'Pending Sign-Off') acts += b('approve','Approve & Sign','btn-p') + b('reject','Reject') + b('sendback','Send Back');
+    if (r.tpStatus === 'Pending DH Approval') acts += b('approve3p','Review 3rd-Party','btn-p');
+    acts += actionsFor(r);
+    return `<div class="bg-white border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3"><div><div class="flex gap-2 items-center"><a class="font-semibold cursor-pointer hover:underline" onclick="detail(${r.id})">${esc(r.title)}</a>${badge(r.status)}</div><p class="text-xs text-gray-500">${r.hc} position(s) · ${r.type} · by ${esc(r.by)} · ${r.created}</p>${r.tp?`<p class="text-xs text-blue-700 mt-1">🤝 3P: ${esc(r.tpAgency)} — ${esc(r.tpFee)} (${esc(r.tpStatus)})</p>`:''}</div><div class="flex flex-wrap gap-2">${acts}</div></div>`;
+  }).join('')||'<p class="text-sm text-gray-500">Nothing awaiting your approval 🎉</p>'}</div>`;
+}
+
+/* ---------- Vault ---------- */
+function viewVault() {
+  let list = DB.reqs.filter(r => (filter==='All'||r.status===filter) && (!q||(r.title+r.div).toLowerCase().includes(q.toLowerCase())));
+  const val = {title:r=>r.title, div:r=>r.div, hc:r=>r.hc, type:r=>r.type, status:r=>r.status, days:r=>days(r)};
+  list.sort((a,b) => { const x=val[sort.k](a), y=val[sort.k](b); return (x>y?1:x<y?-1:0)*sort.d; });
+  const th = (k,l) => `<th class="p-3 text-left" onclick="sort={k:'${k}',d:sort.k==='${k}'?-sort.d:1};render()">${l}${sort.k===k?(sort.d>0?' ▲':' ▼'):''}</th>`;
+  return `<div class="flex flex-wrap gap-3 mb-4">
+  <input class="inp max-w-xs" placeholder="Search requisitions…" value="${esc(q)}" oninput="q=this.value;clearTimeout(window._t);window._t=setTimeout(()=>{render();const i=document.querySelector('#view input');i&&(i.focus(),i.setSelectionRange(i.value.length,i.value.length))},300)">
+  <select class="inp max-w-[200px]" onchange="filter=this.value;render()"><option>All</option>${Object.keys(COLORS).map(s=>`<option ${s===filter?'selected':''}>${s}</option>`).join('')}</select>
+  <button class="btn btn-o" onclick="exportCSV(${JSON.stringify(list.map(r=>r.id))})">⬇ Export</button></div>
+  <div class="bg-white border rounded-xl overflow-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>${th('title','Position')}${th('div','Division')}${th('hc','HC')}${th('type','Type')}${th('status','Status')}${th('days','Days')}<th class="p-3 text-left">JD</th><th class="p-3 text-left">Manatal</th><th class="p-3 text-left">Posted</th><th class="p-3 text-left">Actions</th></tr></thead>
+  <tbody>${list.map(r => {
+    const b = (a,l) => `<button class="text-blue-700 hover:underline mr-2 text-xs font-semibold" onclick="${['post','shortlist'].includes(a)?`quick(${r.id},'${a}')`:`act(${r.id},'${a}')`}">${l}</button>`;
+    let a = '';
+    if (r.status==='With Recruitment') a += b('post','Post');
+    if (r.status==='Posted') a += b('shortlist','Shortlist');
+    if (['Posted','Shortlisting'].includes(r.status)) a += b('fill','Filled');
+    if (OPEN.includes(r.status)) { a += b('sendback','Send Back')+b('hold','Hold')+b('withdraw','Withdraw'); if (!r.tp) a += b('suggest3p','Suggest 3P'); }
+    if (r.status==='On Hold') a += b('resume','Resume');
+    a += b('manatal','Manatal');
+    return `<tr class="border-t"><td class="p-3 font-medium"><a class="cursor-pointer hover:underline" onclick="detail(${r.id})">${esc(r.title)}</a>${r.tp?' <span class="text-xs text-gray-500">(3P)</span>':''}</td><td class="p-3">${r.div}</td><td class="p-3">${r.hc}</td><td class="p-3">${r.type}</td><td class="p-3">${badge(r.status)}</td><td class="p-3">${days(r)}</td><td class="p-3">${r.jd?'✓':'—'}</td><td class="p-3">${r.manatal?`<a class="text-blue-700 underline" target="_blank" href="${esc(r.manatal)}">View</a>`:'—'}</td><td class="p-3">${r.posted?'✓':'—'}</td><td class="p-3 whitespace-nowrap">${a}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+/* ---------- 3rd-Party Headhunters ---------- */
+function viewTP() {
+  const list = DB.reqs.filter(r => r.tp);
+  return `<div class="bg-white border rounded-xl overflow-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-3 text-left">Position</th><th class="p-3 text-left">Division</th><th class="p-3 text-left">Agency</th><th class="p-3 text-left">Fee</th><th class="p-3 text-left">Approval</th><th class="p-3 text-left">Invoice</th><th class="p-3 text-left">Client Charged</th><th class="p-3 text-left">Candidate Charged</th></tr></thead><tbody>
+  ${list.map(r => `<tr class="border-t"><td class="p-3"><a class="cursor-pointer hover:underline" onclick="detail(${r.id})">${esc(r.title)}</a></td><td class="p-3">${r.div}</td><td class="p-3">${esc(r.tpAgency)}</td><td class="p-3">${esc(r.tpFee)}</td>
+  <td class="p-3"><select class="inp text-xs" onchange="setTP(${r.id},'tpStatus',this.value)">${['Pending DH Approval','DH Approved','HR Signed Off','GM Approved','Finance Processed','Declined'].map(s=>`<option ${s===r.tpStatus?'selected':''}>${s}</option>`).join('')}</select></td>
+  <td class="p-3">${r.invoice?`<span class="text-xs">📎 ${esc(r.invoice)}</span>`:`<label class="text-blue-700 text-xs cursor-pointer underline">Upload<input type="file" class="hidden" onchange="setTP(${r.id},'invoice',this.files[0]?.name)"></label>`}</td>
+  <td class="p-3"><input type="checkbox" ${r.clientCharged?'checked':''} onchange="setTP(${r.id},'clientCharged',this.checked)"></td>
+  <td class="p-3"><input type="checkbox" ${r.candCharged?'checked':''} onchange="setTP(${r.id},'candCharged',this.checked)"></td></tr>`).join('') || '<tr><td colspan="8" class="p-4 text-gray-500">No 3rd-party requisitions yet. Use "Suggest 3P" in the Vault.</td></tr>'}</tbody></table></div>`;
+}
+async function setTP(id, k, v) { await updateReq(id, {[k]: v}); toast('Updated'); }
+
+/* ---------- Settings ---------- */
+function viewSettings() {
+  return `<div class="grid md:grid-cols-2 gap-6">
+  <div class="bg-white border rounded-xl p-4"><div class="flex justify-between mb-3"><p class="font-semibold">Divisions</p><button class="btn btn-p" onclick="addDiv()">+ Add Division</button></div>
+  <table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Name</th><th class="p-2 text-left">LOB Code</th><th class="p-2 text-left">Department</th><th></th></tr></thead>
+  <tbody>${DB.divisions.map((d,i)=>`<tr class="border-t"><td class="p-2">${esc(d.name)}</td><td class="p-2">${esc(d.code)}</td><td class="p-2">${esc(d.dept)}</td><td class="p-2 text-right"><button class="text-red-600 text-xs" onclick="removeDiv(${i})">Delete</button></td></tr>`).join('')}</tbody></table></div>
+  <div class="bg-white border rounded-xl p-4"><div class="flex justify-between mb-3"><p class="font-semibold">Departments & Designations</p><button class="btn btn-p" onclick="addDept()">+ Department</button></div>
+  ${Object.entries(DB.departments).map(([d,ds])=>`<div class="border-t py-2"><div class="flex justify-between"><b class="text-sm">${esc(d)}</b><span><button class="text-blue-700 text-xs mr-2" onclick="addDesig('${esc(d)}')">+ Designation</button><button class="text-red-600 text-xs" onclick="removeDept('${esc(d)}')">Delete</button></span></div><div class="flex flex-wrap gap-1 mt-1">${ds.map((x,i)=>`<span class="badge bg-gray-100">${esc(x)} <button onclick="removeDesig('${esc(d)}',${i})">×</button></span>`).join('')}</div></div>`).join('')}</div></div>`;
+}
+function addDiv(){modal(`<h3 class="font-bold mb-3">Add Division</h3><input id="dN" class="inp mb-2" placeholder="Division name"><input id="dC" class="inp mb-2" placeholder="LOB code"><input id="dD" class="inp mb-4" placeholder="Department"><div class="flex justify-end gap-2"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveDiv()">Save</button></div>`)}
+async function saveDiv(){const n=$('#dN').value.trim(),c=$('#dC').value.trim(),d=$('#dD').value.trim();if(!n||!c)return toast('Name and code required');DB.divisions.push({name:n,code:c,dept:d||'—'});await saveSettingsCurrent();closeModal();render()}
+async function removeDiv(i){DB.divisions.splice(i,1);await saveSettingsCurrent();render()}
+async function addDept(){const n=prompt('Department name');if(n){DB.departments[n]=[];await saveSettingsCurrent();render()}}
+async function addDesig(d){const n=prompt('Designation');if(n){if(!DB.departments[d])DB.departments[d]=[];DB.departments[d].push(n);await saveSettingsCurrent();render()}}
+async function removeDept(d){if(!confirm('Delete this department?'))return;delete DB.departments[d];await saveSettingsCurrent();render()}
+async function removeDesig(d,i){DB.departments[d].splice(i,1);await saveSettingsCurrent();render()}
+
+/* ---------- User Management ---------- */
+function viewUsers() {
+  db.collection('users').get().then(snap => {
+    cachedUsers = snap.docs.map(d => ({ email: d.id, ...d.data() }));
+    if (page === 'users') render();
+  });
+  const isAdmin = me.email === SUPER_ADMIN || me.role === 'HR / Recruiter';
+  return `<div class="flex justify-between items-center mb-4">
+    <p class="text-sm text-gray-500">Users with access to this portal. Sign in with Google is required.</p>
+    ${isAdmin ? `<button class="btn btn-p" onclick="addUser()">+ Add User</button>` : ''}
+  </div>
+  <div class="bg-white border rounded-xl overflow-auto"><table class="w-full text-sm">
+  <thead class="bg-gray-50"><tr><th class="p-3 text-left">Name</th><th class="p-3 text-left">Email</th><th class="p-3 text-left">Role</th><th class="p-3 text-left">Division</th><th class="p-3 text-left">Status</th>${isAdmin?'<th class="p-3"></th>':''}</tr></thead>
+  <tbody>${cachedUsers.length ? cachedUsers.map(u=>`<tr class="border-t"><td class="p-3">${esc(u.name||'')}</td><td class="p-3 text-gray-600">${esc(u.email)}</td><td class="p-3">${esc(u.role)}</td><td class="p-3">${esc(u.div)}</td><td class="p-3"><span class="badge bg-emerald-100 text-emerald-800">Active</span></td>${isAdmin?`<td class="p-3">${u.email!==SUPER_ADMIN?`<button class="text-red-600 text-xs hover:underline" onclick="removeUser('${esc(u.email)}')">Remove</button>`:''}`:''}</tr>`).join('') : '<tr><td colspan="6" class="p-4 text-gray-400 text-center">Loading users…</td></tr>'}</tbody></table></div>`;
+}
+
+function addUser() {
+  modal(`<h3 class="font-bold mb-3">Add User</h3>
+  <label class="text-sm font-medium">Full Name *</label><input id="uN" class="inp mb-2" placeholder="e.g. J. Perera">
+  <label class="text-sm font-medium">Email (Google account) *</label><input id="uE" class="inp mb-2" type="email" placeholder="user@example.com">
+  <label class="text-sm font-medium">Role *</label>
+  <select id="uR" class="inp mb-2"><option>Division ER</option><option>Division Head</option><option>HR / Recruiter</option></select>
+  <label class="text-sm font-medium">Division</label>
+  <select id="uD" class="inp mb-4"><option value="All">All (HR)</option>${DB.divisions.map(d=>`<option value="${d.code}">${d.code} — ${esc(d.name)}</option>`).join('')}</select>
+  <div class="flex justify-end gap-2"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveUser()">Add User</button></div>`);
+}
+
+async function saveUser() {
+  const n=$('#uN').value.trim(), e=$('#uE').value.trim().toLowerCase(), r=$('#uR').value, d=$('#uD').value;
+  if (!n||!e) return toast('Name and email required');
+  await db.collection('users').doc(e).set({name:n, email:e, role:r, div:d});
+  closeModal(); toast('User added'); cachedUsers=[];render();
+}
+
+async function removeUser(email) {
+  if (!confirm(`Remove ${email} from the portal?`)) return;
+  await db.collection('users').doc(email).delete();
+  toast('User removed'); cachedUsers=[];render();
+}
+
+/* ---------- Export ---------- */
+function exportCSV(ids) {
+  const rows = DB.reqs.filter(r => ids.includes(r.id));
+  const cols = ['id','title','div','dept','hc','type','status','created','salary','reason','budget','candidate','filledDate','tpAgency','tpFee','tpStatus'];
+  const csv = [cols.join(','), ...rows.map(r=>cols.map(c=>`"${String(r[c]??'').replace(/"/g,'""')}"`).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = 'requisitions-report.csv';
+  a.click();
+}
+</script>
+</body>
+</html>

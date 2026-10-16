@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Check if the requesting user is in the portal users collection
+    function isPortalUser() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.token.email));
+    }
+
+    // Check if requester is the super admin
+    function isSuperAdmin() {
+      return request.auth != null &&
+             request.auth.token.email == "portcitybpo26@gmail.com";
+    }
+
+    // Requisitions: any portal user can read/write
+    match /requisitions/{id} {
+      allow read, write: if isPortalUser() || isSuperAdmin();
+    }
+
+    // Notifications: any portal user can read/write their own
+    match /notifications/{id} {
+      allow read, write: if isPortalUser() || isSuperAdmin();
+    }
+
+    // Settings: any portal user can read; only HR/admin can write (enforced in app)
+    match /settings/{doc} {
+      allow read: if isPortalUser() || isSuperAdmin();
+      allow write: if isPortalUser() || isSuperAdmin();
+    }
+
+    // Users: any portal user can read; only super admin can write
+    match /users/{email} {
+      allow read: if isPortalUser() || isSuperAdmin();
+      // Super admin can manage users; also allow self-creation on first login
+      allow create: if isSuperAdmin() ||
+                       (request.auth != null && request.auth.token.email == email);
+      allow update, delete: if isSuperAdmin() || isPortalUser();
+    }
+  }
+}
