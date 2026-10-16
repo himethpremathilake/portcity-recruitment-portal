@@ -104,9 +104,15 @@
   <main class="flex-1 flex flex-col min-w-0">
     <header class="flex items-center justify-between px-6 py-3 bg-white border-b">
       <div id="pageTitle" class="font-semibold"></div>
-      <div class="relative">
-        <button onclick="toggleNotif()" class="relative text-blue-700 text-2xl">🔔<span id="nCount" class="absolute -top-1 -right-2 bg-red-600 text-white text-[10px] rounded-full px-1.5"></span></button>
-        <div id="notifBox" class="hidden absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg z-20 max-h-96 overflow-auto"></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button id="giveAccessBtn" onclick="openAccessDrawer()" style="display:none;align-items:center;gap:6px;padding:7px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M11 6a3 3 0 11-6 0 3 3 0 016 0zM14 17a6 6 0 10-12 0h12zM13 8a1 1 0 100 2 3 3 0 010 6v1a1 1 0 102 0v-1a5 5 0 000-8V8a1 1 0 10-2 0z"/></svg>
+          Give Access
+        </button>
+        <div class="relative">
+          <button onclick="toggleNotif()" class="relative text-blue-700 text-2xl">🔔<span id="nCount" class="absolute -top-1 -right-2 bg-red-600 text-white text-[10px] rounded-full px-1.5"></span></button>
+          <div id="notifBox" class="hidden absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg z-20 max-h-96 overflow-auto"></div>
+        </div>
       </div>
     </header>
     <section id="view" class="p-6 overflow-auto">
@@ -119,6 +125,39 @@
   <div id="modalBody" class="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto"></div>
 </div>
 <div id="toast" class="hidden fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm z-40"></div>
+
+<!-- Access Management Drawer -->
+<div id="accessOverlay" onclick="closeAccessDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:45"></div>
+<div id="accessDrawer" style="display:none;position:fixed;top:0;right:0;height:100vh;width:420px;max-width:95vw;background:#fff;z-index:46;box-shadow:-4px 0 24px rgba(0,0,0,0.12);flex-direction:column;overflow:hidden">
+  <div style="padding:20px 24px 16px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div>
+      <h2 style="font-size:17px;font-weight:700;margin:0 0 2px;color:#111827">Access Management</h2>
+      <p style="font-size:12px;color:#6b7280;margin:0">Only approved users can sign in to this portal.</p>
+    </div>
+    <button onclick="closeAccessDrawer()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1">×</button>
+  </div>
+  <!-- Add user form -->
+  <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;background:#f9fafb;flex-shrink:0">
+    <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 10px;letter-spacing:.05em">GIVE ACCESS</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <input id="auName" class="inp" placeholder="Full name *">
+      <input id="auEmail" class="inp" type="email" placeholder="Email address *">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <select id="auRole" class="inp" onchange="updateDivSelect()">
+          <option value="Division ER">Viewer — Division ER</option>
+          <option value="Division Head">Viewer — Division Head</option>
+          <option value="HR / Recruiter">Editor — HR/Recruiter</option>
+        </select>
+        <select id="auDiv" class="inp">
+          <option value="All">All Divisions</option>
+        </select>
+      </div>
+      <button onclick="addAccessUser()" style="padding:8px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">+ Give Access</button>
+    </div>
+  </div>
+  <!-- User list -->
+  <div id="accessList" style="flex:1;overflow-y:auto;padding:16px 24px"></div>
+</div>
 
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -350,6 +389,81 @@ function signOut() {
   auth.signOut();
 }
 
+// ===== ACCESS DRAWER =====
+function openAccessDrawer() {
+  // Populate division selector
+  const ds = document.getElementById('auDiv');
+  ds.innerHTML = '<option value="All">All Divisions</option>' +
+    DB.divisions.map(d => `<option value="${esc(d.code)}">${d.code} — ${esc(d.name)}</option>`).join('');
+  updateDivSelect();
+  renderAccessList();
+  document.getElementById('accessOverlay').style.display = 'block';
+  document.getElementById('accessDrawer').style.display = 'flex';
+}
+function closeAccessDrawer() {
+  document.getElementById('accessOverlay').style.display = 'none';
+  document.getElementById('accessDrawer').style.display = 'none';
+}
+function updateDivSelect() {
+  const role = document.getElementById('auRole').value;
+  const divSel = document.getElementById('auDiv');
+  divSel.disabled = role === 'HR / Recruiter';
+  if (role === 'HR / Recruiter') divSel.value = 'All';
+}
+async function renderAccessList() {
+  const list = document.getElementById('accessList');
+  list.innerHTML = '<p style="color:#9ca3af;font-size:13px">Loading…</p>';
+  try {
+    const snap = await db.collection('users').get();
+    const users = snap.docs.map(d => ({email: d.id, ...d.data()}));
+    const tiers = [
+      {label:'Super Admins', color:'#1d4ed8', bg:'#dbeafe', users: users.filter(u => isSuperAdmin(u.email))},
+      {label:'Editors — HR / Recruiter', color:'#059669', bg:'#d1fae5', users: users.filter(u => !isSuperAdmin(u.email) && u.role === 'HR / Recruiter')},
+      {label:'Viewers — Division Head', color:'#d97706', bg:'#fef3c7', users: users.filter(u => u.role === 'Division Head')},
+      {label:'Viewers — Division ER', color:'#7c3aed', bg:'#ede9fe', users: users.filter(u => u.role === 'Division ER')},
+    ];
+    list.innerHTML = tiers.map(t => `
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:${t.bg};color:${t.color}">${t.label}</span>
+          <span style="font-size:11px;color:#9ca3af">${t.users.length} user${t.users.length!==1?'s':''}</span>
+        </div>
+        ${t.users.length ? t.users.map(u => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:6px;background:#fff">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#111827">${esc(u.name||u.email)}</div>
+              <div style="font-size:11px;color:#6b7280">${esc(u.email)}${u.div&&u.div!=='All'?' · '+u.div:''}</div>
+            </div>
+            ${!isSuperAdmin(u.email) ? `<button onclick="revokeUser('${esc(u.email)}')" style="font-size:11px;color:#dc2626;background:none;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;cursor:pointer">Revoke</button>` : '<span style="font-size:11px;color:#9ca3af">Protected</span>'}
+          </div>`) .join('') : `<p style="font-size:12px;color:#9ca3af;margin:0;padding:4px 0">No users in this tier.</p>`}
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = `<p style="color:#dc2626;font-size:13px">${esc(e.message)}</p>`;
+  }
+}
+async function addAccessUser() {
+  const name = document.getElementById('auName').value.trim();
+  const email = document.getElementById('auEmail').value.trim().toLowerCase();
+  const role = document.getElementById('auRole').value;
+  const div = document.getElementById('auDiv').value;
+  if (!name || !email) return toast('Name and email are required.');
+  try {
+    await db.collection('users').doc(email).set({name, email, role, div});
+    document.getElementById('auName').value = '';
+    document.getElementById('auEmail').value = '';
+    toast('Access granted to ' + email);
+    renderAccessList();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+async function revokeUser(email) {
+  if (!confirm(`Remove access for ${email}?`)) return;
+  try {
+    await db.collection('users').doc(email).delete();
+    toast('Access revoked for ' + email);
+    renderAccessList();
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
 auth.onAuthStateChanged(async user => {
   if (!user) {
     $('#loginScreen').style.display = 'flex';
@@ -364,6 +478,8 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('createPwBox').style.display = 'none';
     document.getElementById('createPwBtn').disabled = false;
     document.getElementById('createPwBtn').textContent = 'Create password & sign in';
+    document.getElementById('giveAccessBtn').style.display = 'none';
+    closeAccessDrawer();
     me = null;
     return;
   }
@@ -401,6 +517,8 @@ auth.onAuthStateChanged(async user => {
   }
   $('#userName').textContent = me.name;
   $('#userRoleLabel').textContent = me.role + (me.div !== 'All' ? ` · ${me.div}` : '');
+  const gab = document.getElementById('giveAccessBtn');
+  gab.style.display = isSuperAdmin(me.email) ? 'flex' : 'none';
 
   await loadSettings();
   page = NAV[me.role][0][0];
