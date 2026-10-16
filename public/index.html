@@ -146,6 +146,8 @@
         <select id="auRole" class="inp" onchange="updateDivSelect()">
           <option value="Division ER">Viewer — Division ER</option>
           <option value="Division Head">Viewer — Division Head</option>
+          <option value="PCBPO CT">Viewer — PCBPO CT</option>
+          <option value="Super Admin PCBPO CT">Super Admin — PCBPO CT</option>
           <option value="HR / Recruiter">Editor — HR/Recruiter</option>
         </select>
         <select id="auDiv" class="inp">
@@ -418,9 +420,11 @@ async function renderAccessList() {
     const users = snap.docs.map(d => ({email: d.id, ...d.data()}));
     const tiers = [
       {label:'Super Admins', color:'#1d4ed8', bg:'#dbeafe', users: users.filter(u => isSuperAdmin(u.email))},
+      {label:'Super Admin — PCBPO CT', color:'#be185d', bg:'#fce7f3', users: users.filter(u => u.role === 'Super Admin PCBPO CT')},
       {label:'Editors — HR / Recruiter', color:'#059669', bg:'#d1fae5', users: users.filter(u => !isSuperAdmin(u.email) && u.role === 'HR / Recruiter')},
       {label:'Viewers — Division Head', color:'#d97706', bg:'#fef3c7', users: users.filter(u => u.role === 'Division Head')},
       {label:'Viewers — Division ER', color:'#7c3aed', bg:'#ede9fe', users: users.filter(u => u.role === 'Division ER')},
+      {label:'Viewers — PCBPO CT', color:'#0369a1', bg:'#e0f2fe', users: users.filter(u => u.role === 'PCBPO CT')},
     ];
     list.innerHTML = tiers.map(t => `
       <div style="margin-bottom:20px">
@@ -529,9 +533,11 @@ auth.onAuthStateChanged(async user => {
 
 // ===== NAV =====
 const NAV = {
-  'Division ER': [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview']],
-  'Division Head': [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview'],['approvals','✍️ Approvals']],
-  'HR / Recruiter': [['overview','📈 Overview'],['vault','🗄️ Vault'],['tp','🤝 3rd-Party Headhunters'],['new','➕ New Request'],['settings','⚙️ Settings'],['users','👥 User Management']]
+  'Division ER':  [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview']],
+  'Division Head':[['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview'],['approvals','✍️ Approvals']],
+  'PCBPO CT':     [['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview']],
+  'Super Admin PCBPO CT': [['overview','📈 Overview'],['vault','🗄️ Vault'],['new','➕ New Request'],['mine','📋 My Requests'],['division','📊 Division Overview'],['settings','⚙️ Settings'],['users','👥 User Management']],
+  'HR / Recruiter':[['overview','📈 Overview'],['vault','🗄️ Vault'],['tp','🤝 3rd-Party Headhunters'],['new','➕ New Request'],['settings','⚙️ Settings'],['users','👥 User Management']]
 };
 const TITLES = {new:'New Recruitment Request',mine:'My Requests',division:'Division Overview',approvals:'Approvals',overview:'Overview — All Divisions',vault:'Requisition Vault',tp:'3rd-Party Headhunters',settings:'Settings',users:'User Management'};
 
@@ -888,7 +894,7 @@ function addUser() {
   <label class="text-sm font-medium">Full Name *</label><input id="uN" class="inp mb-2" placeholder="e.g. J. Perera">
   <label class="text-sm font-medium">Email (Google account) *</label><input id="uE" class="inp mb-2" type="email" placeholder="user@example.com">
   <label class="text-sm font-medium">Role *</label>
-  <select id="uR" class="inp mb-2"><option>Division ER</option><option>Division Head</option><option>HR / Recruiter</option></select>
+  <select id="uR" class="inp mb-2"><option>Division ER</option><option>Division Head</option><option>PCBPO CT</option><option>Super Admin PCBPO CT</option><option>HR / Recruiter</option></select>
   <label class="text-sm font-medium">Division</label>
   <select id="uD" class="inp mb-4"><option value="All">All (HR)</option>${DB.divisions.map(d=>`<option value="${d.code}">${d.code} — ${esc(d.name)}</option>`).join('')}</select>
   <div class="flex justify-end gap-2"><button class="btn btn-o" onclick="closeModal()">Cancel</button><button class="btn btn-p" onclick="saveUser()">Add User</button></div>`);
