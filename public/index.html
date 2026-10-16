@@ -522,7 +522,7 @@ auth.onAuthStateChanged(async user => {
   $('#userName').textContent = me.name;
   $('#userRoleLabel').textContent = me.role + (me.div !== 'All' ? ` · ${me.div}` : '');
   const gab = document.getElementById('giveAccessBtn');
-  gab.style.display = isSuperAdmin(me.email) ? 'flex' : 'none';
+  gab.style.display = (isSuperAdmin(me.email) || me?.role === 'Super Admin PCBPO CT') ? 'flex' : 'none';
 
   await loadSettings();
   page = NAV[me.role][0][0];
@@ -879,7 +879,7 @@ function viewUsers() {
     cachedUsers = snap.docs.map(d => ({ email: d.id, ...d.data() }));
     if (page === 'users') render();
   });
-  const canManage = isSuperAdmin(me.email);
+  const canManage = isSuperAdmin(me.email) || me?.role === 'Super Admin PCBPO CT';
   return `<div class="flex justify-between items-center mb-4">
     <p class="text-sm text-gray-500">Users with access to this portal. Sign in with Google is required.</p>
     ${canManage ? `<button class="btn btn-p" onclick="addUser()">+ Give Access</button>` : ''}
