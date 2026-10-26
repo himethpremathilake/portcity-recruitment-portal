@@ -31,9 +31,10 @@ service cloud.firestore {
       allow write: if isPortalUser() || isSuperAdmin();
     }
 
-    // Users: any portal user can read; only super admin can write
+    // Users: allow unauthenticated reads so the login screen can check the
+    // access list before creating a first-time password (data: name/email/role/div only)
     match /users/{email} {
-      allow read: if isPortalUser() || isSuperAdmin();
+      allow read: if true;
       // Super admins can manage users; also allow self-creation on first login
       allow create: if isSuperAdmin() ||
                        (request.auth != null && request.auth.token.email == email);

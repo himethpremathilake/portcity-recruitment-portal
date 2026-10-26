@@ -195,7 +195,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const days = r => Math.max(0, Math.round(((r.filledDate ? new Date(r.filledDate) : new Date()) - new Date(r.created)) / 864e5));
 const isHR = () => me?.role === 'HR / Recruiter';
-const visible = () => DB.reqs.filter(r => isHR() || r.div === me?.div);
+const visible = () => DB.reqs.filter(r => isHR() || me?.div === 'All' || r.div === me?.div);
 const OPEN = ['Pending Sign-Off','Approved','With Recruitment','Posted','Shortlisting','More Info Requested'];
 const COLORS = {
   'Draft':'bg-gray-100 text-gray-700','Pending Sign-Off':'bg-amber-100 text-amber-800',
@@ -597,7 +597,7 @@ $('#modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
 
 /* ---------- New Request ---------- */
 function viewNew() {
-  const divs = isHR() ? DB.divisions : DB.divisions.filter(d => d.code === me.div);
+  const divs = (isHR() || me?.div === 'All') ? DB.divisions : DB.divisions.filter(d => d.code === me.div);
   const F = (l,h) => `<div><label class="text-sm font-medium">${l}</label><div class="mt-1">${h}</div></div>`;
   return `<form id="reqForm" class="max-w-3xl bg-white rounded-xl border p-6 space-y-5">
   <p class="text-xs font-bold text-blue-700 uppercase">A. Request Details</p>
@@ -756,6 +756,7 @@ function viewMine() {
 function actionsFor(r) {
   const b = (a,l,c='btn-o') => `<button class="btn ${c}" onclick="act(${r.id},'${a}')">${l}</button>`;
   if (r.status === 'On Hold') return b('resume','Resume');
+  if (r.status === 'More Info Requested') return b('resume','Resubmit','btn-p') + b('hold','Hold') + b('withdraw','Withdraw');
   if (['Filled','Withdrawn','Rejected'].includes(r.status)) return '';
   return b('hold','Hold') + b('withdraw','Withdraw');
 }
@@ -785,7 +786,7 @@ function viewDivision() {
   const open = list.filter(r => OPEN.includes(r.status));
   const yr = new Date().getFullYear() + '';
   const months = [...Array(6)].map((_,i) => { const d=new Date(); d.setMonth(d.getMonth()-5+i); const m=d.toISOString().slice(0,7); return {l:d.toLocaleString('en',{month:'short'}), a:list.filter(r=>r.created.startsWith(m)).length, b:list.filter(r=>r.filledDate?.startsWith(m)).length}; });
-  return `<div class="flex justify-between mb-4"><h2 class="text-lg font-bold">Division ${me.div}</h2><button class="btn btn-o" onclick="exportCSV(${JSON.stringify(list.map(r=>r.id))})">⬇ Download Report</button></div>
+  return `<div class="flex justify-between mb-4"><h2 class="text-lg font-bold">${me.div === 'All' ? 'All Divisions' : 'Division ' + me.div}</h2><button class="btn btn-o" onclick="exportCSV(${JSON.stringify(list.map(r=>r.id))})">⬇ Download Report</button></div>
   <div class="grid grid-cols-2 md:grid-cols-5 gap-4">${kpi(open.length,'Current Openings')}${kpi(list.filter(r=>r.status==='Filled'&&r.filledDate?.startsWith(yr)).length,'Filled This Year')}${kpi(list.filter(r=>r.status==='On Hold').length,'On Hold')}${kpi(list.filter(r=>r.status==='Withdrawn').length,'Withdrawn')}${kpi((open.length?Math.round(open.reduce((a,r)=>a+days(r),0)/open.length):0)+'d','Avg. Age (Open)')}</div>
   <div class="grid md:grid-cols-2 gap-4 my-5"><div class="bg-white border rounded-xl p-4"><p class="font-medium text-sm mb-2">Status Breakdown</p>${donut(statusCounts(list))}</div><div class="bg-white border rounded-xl p-4"><p class="font-medium text-sm mb-2">Monthly: Submissions vs Fills</p>${bars(months)}</div></div>
   <p class="font-medium text-sm mb-2">Current Openings — Aging Tracker</p>${agingTable(open, false, true)}`;
@@ -879,14 +880,14 @@ function viewUsers() {
     cachedUsers = snap.docs.map(d => ({ email: d.id, ...d.data() }));
     if (page === 'users') render();
   });
-  const canManage = isSuperAdmin(me.email) || me?.role === 'Super Admin PCBPO CT';
+  const canManage = isSuperAdmin(me.email) || me?.role === 'Super Admin PCBPO CT' || me?.role === 'HR / Recruiter';
   return `<div class="flex justify-between items-center mb-4">
     <p class="text-sm text-gray-500">Users with access to this portal. Sign in with Google is required.</p>
     ${canManage ? `<button class="btn btn-p" onclick="addUser()">+ Give Access</button>` : ''}
   </div>
   <div class="bg-white border rounded-xl overflow-auto"><table class="w-full text-sm">
   <thead class="bg-gray-50"><tr><th class="p-3 text-left">Name</th><th class="p-3 text-left">Email</th><th class="p-3 text-left">Role</th><th class="p-3 text-left">Division</th><th class="p-3 text-left">Status</th>${canManage?'<th class="p-3"></th>':''}</tr></thead>
-  <tbody>${cachedUsers.length ? cachedUsers.map(u=>`<tr class="border-t"><td class="p-3">${esc(u.name||'')}${isSuperAdmin(u.email)?'<span class="badge bg-blue-100 text-blue-700 ml-1">Super Admin</span>':''}</td><td class="p-3 text-gray-600">${esc(u.email)}</td><td class="p-3">${esc(u.role)}</td><td class="p-3">${esc(u.div)}</td><td class="p-3"><span class="badge bg-emerald-100 text-emerald-800">Active</span></td>${canManage?`<td class="p-3">${!isSuperAdmin(u.email)?`<button class="text-red-600 text-xs hover:underline" onclick="removeUser('${esc(u.email)}')">Revoke Access</button>`:''}`:''}</tr>`).join('') : '<tr><td colspan="6" class="p-4 text-gray-400 text-center">Loading users…</td></tr>'}</tbody></table></div>`;
+  <tbody>${cachedUsers.length ? cachedUsers.map(u=>`<tr class="border-t"><td class="p-3">${esc(u.name||'')}${isSuperAdmin(u.email)?'<span class="badge bg-blue-100 text-blue-700 ml-1">Super Admin</span>':''}</td><td class="p-3 text-gray-600">${esc(u.email)}</td><td class="p-3">${esc(u.role)}</td><td class="p-3">${esc(u.div)}</td><td class="p-3"><span class="badge bg-emerald-100 text-emerald-800">Active</span></td>${canManage?`<td class="p-3">${!isSuperAdmin(u.email)?`<button class="text-red-600 text-xs hover:underline" onclick="removeUser('${esc(u.email)}')">Revoke Access</button>`:''}</td>`:''}</tr>`).join('') : '<tr><td colspan="6" class="p-4 text-gray-400 text-center">Loading users…</td></tr>'}</tbody></table></div>`;
 }
 
 function addUser() {
@@ -912,6 +913,14 @@ async function removeUser(email) {
   await db.collection('users').doc(email).delete();
   toast('User removed'); cachedUsers=[];render();
 }
+
+/* ---------- Notification outside-click close ---------- */
+document.addEventListener('click', e => {
+  const box = $('#notifBox');
+  if (!box.classList.contains('hidden') && !e.target.closest('#notifBox') && !e.target.closest('button[onclick*="toggleNotif"]')) {
+    box.classList.add('hidden');
+  }
+});
 
 /* ---------- Export ---------- */
 function exportCSV(ids) {
