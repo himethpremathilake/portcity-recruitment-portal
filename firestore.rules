@@ -15,6 +15,13 @@ service cloud.firestore {
               request.auth.token.email == "gayathri@portcitybpo.lk");
     }
 
+    // Check if requester is Super Admin PCBPO CT
+    function isSuperAdminPCBPOCT() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.token.email)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'Super Admin PCBPO CT';
+    }
+
     // Requisitions: any portal user can read/write
     match /requisitions/{id} {
       allow read, write: if isPortalUser() || isSuperAdmin();
@@ -36,11 +43,10 @@ service cloud.firestore {
     match /users/{email} {
       allow read: if true;
       // Super admins can manage users; also allow self-creation on first login
-      allow create: if isSuperAdmin() ||
+      allow create: if isSuperAdmin() || isSuperAdminPCBPOCT() ||
                        (request.auth != null && request.auth.token.email == email);
-      // Only super admins can delete users
-      allow update: if isSuperAdmin() || isPortalUser();
-      allow delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || isSuperAdminPCBPOCT() || isPortalUser();
+      allow delete: if isSuperAdmin() || isSuperAdminPCBPOCT();
     }
   }
 }
